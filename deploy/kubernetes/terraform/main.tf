@@ -1,15 +1,15 @@
 provider "aws" {
-  region = "${var.aws_region}"
+  region = var.aws_region
 }
 
 resource "aws_security_group" "k8s-security-group" {
   name        = "md-k8s-security-group"
   description = "allow all internal traffic, ssh, http from anywhere"
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    self        = "true"
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    self      = "true"
   }
   ingress {
     from_port   = 22
@@ -42,11 +42,11 @@ resource "aws_security_group" "k8s-security-group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-   from_port   = 31601
-   to_port     = 31601
-   protocol    = "tcp"
-   cidr_blocks = ["0.0.0.0/0"]
- }
+    from_port   = 31601
+    to_port     = 31601
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -56,21 +56,28 @@ resource "aws_security_group" "k8s-security-group" {
 }
 
 resource "aws_instance" "ci-sockshop-k8s-master" {
-  instance_type   = "${var.master_instance_type}"
-  ami             = "${lookup(var.aws_amis, var.aws_region)}"
-  key_name        = "${var.key_name}"
-  security_groups = ["${aws_security_group.k8s-security-group.name}"]
-  tags {
+  # instance_type   = "${var.master_instance_type}"
+  # ami             = "${lookup(var.aws_amis, var.aws_region)}"
+  # key_name        = "${var.key_name}"
+  # security_groups = ["${aws_security_group.k8s-security-group.name}"]
+  instance_type   = var.master_instance_type
+  ami             = lookup(var.aws_amis, var.aws_region)
+  key_name        = var.key_name
+  security_groups = [aws_security_group.k8s-security-group.name]
+  tags = {
     Name = "ci-sockshop-k8s-master"
   }
 
   connection {
-    user = "ubuntu"
-    private_key = "${file("${var.private_key_path}")}"
+    user        = "ubuntu"
+    private_key = file(var.private_key_path)
+    type        = "ssh"
+    host        = self.public_ip
+    #private_key = "${file("${var.private_key_path}")}"
   }
 
   provisioner "file" {
-    source = "deploy/kubernetes/manifests"
+    source      = "deploy/kubernetes/manifests"
     destination = "/tmp/"
   }
 
@@ -86,18 +93,26 @@ resource "aws_instance" "ci-sockshop-k8s-master" {
 }
 
 resource "aws_instance" "ci-sockshop-k8s-node" {
-  instance_type   = "${var.node_instance_type}"
-  count           = "${var.node_count}"
-  ami             = "${lookup(var.aws_amis, var.aws_region)}"
-  key_name        = "${var.key_name}"
-  security_groups = ["${aws_security_group.k8s-security-group.name}"]
-  tags {
+  # instance_type   = "${var.node_instance_type}"
+  # count           = "${var.node_count}"
+  # ami             = "${lookup(var.aws_amis, var.aws_region)}"
+  # key_name        = "${var.key_name}"
+  # security_groups = ["${aws_security_group.k8s-security-group.name}"]
+  instance_type   = var.node_instance_type
+  count           = var.node_count
+  ami             = lookup(var.aws_amis, var.aws_region)
+  key_name        = var.key_name
+  security_groups = [aws_security_group.k8s-security-group.name]
+  tags = {
     Name = "ci-sockshop-k8s-node"
   }
 
   connection {
-    user = "ubuntu"
-    private_key = "${file("${var.private_key_path}")}"
+    user        = "ubuntu"
+    private_key = file(var.private_key_path)
+    type        = "ssh"
+    host        = self.public_ip
+    #private_key = "${file("${var.private_key_path}")}"
   }
 
   provisioner "remote-exec" {
@@ -113,22 +128,26 @@ resource "aws_instance" "ci-sockshop-k8s-node" {
 }
 
 resource "aws_elb" "ci-sockshop-k8s-elb" {
-  depends_on = [ "aws_instance.ci-sockshop-k8s-node" ]
+  depends_on = [aws_instance.ci-sockshop-k8s-node]
+  #depends_on = [ "aws_instance.ci-sockshop-k8s-node" ]
   name = "ci-sockshop-k8s-elb"
-  instances = ["${aws_instance.ci-sockshop-k8s-node.*.id}"]
-  availability_zones = ["${data.aws_availability_zones.available.names}"]
-  security_groups = ["${aws_security_group.k8s-security-group.id}"] 
+  # instances = ["${aws_instance.ci-sockshop-k8s-node.*.id}"]
+  # availability_zones = ["${data.aws_availability_zones.available.names}"]
+  # security_groups = ["${aws_security_group.k8s-security-group.id}"] 
+  instances          = aws_instance.ci-sockshop-k8s-node.*.id
+  availability_zones = data.aws_availability_zones.available.names
+  security_groups    = [aws_security_group.k8s-security-group.id]
   listener {
-    lb_port = 80
-    instance_port = 30001
-    lb_protocol = "http"
+    lb_port           = 80
+    instance_port     = 30001
+    lb_protocol       = "http"
     instance_protocol = "http"
   }
 
   listener {
-    lb_port = 9411
-    instance_port = 30002
-    lb_protocol = "http"
+    lb_port           = 9411
+    instance_port     = 30002
+    lb_protocol       = "http"
     instance_protocol = "http"
   }
 

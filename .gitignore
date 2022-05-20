@@ -131,3 +131,9 @@ output-virtualbox-iso
 # Ignore grafanalib output
 /graphs/__pycache__/
 /graphs/*.json
+
+# Terraform state files
+terraform.tfstate
+terraform.tfstate.backup
+.terraform.lock.hcl
+.terraform
