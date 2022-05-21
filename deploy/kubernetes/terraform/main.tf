@@ -56,10 +56,6 @@ resource "aws_security_group" "k8s-security-group" {
 }
 
 resource "aws_instance" "ci-sockshop-k8s-master" {
-  # instance_type   = "${var.master_instance_type}"
-  # ami             = "${lookup(var.aws_amis, var.aws_region)}"
-  # key_name        = "${var.key_name}"
-  # security_groups = ["${aws_security_group.k8s-security-group.name}"]
   instance_type   = var.master_instance_type
   ami             = lookup(var.aws_amis, var.aws_region)
   key_name        = var.key_name
@@ -73,7 +69,6 @@ resource "aws_instance" "ci-sockshop-k8s-master" {
     private_key = file(var.private_key_path)
     type        = "ssh"
     host        = self.public_ip
-    #private_key = "${file("${var.private_key_path}")}"
   }
 
   provisioner "file" {
@@ -93,11 +88,6 @@ resource "aws_instance" "ci-sockshop-k8s-master" {
 }
 
 resource "aws_instance" "ci-sockshop-k8s-node" {
-  # instance_type   = "${var.node_instance_type}"
-  # count           = "${var.node_count}"
-  # ami             = "${lookup(var.aws_amis, var.aws_region)}"
-  # key_name        = "${var.key_name}"
-  # security_groups = ["${aws_security_group.k8s-security-group.name}"]
   instance_type   = var.node_instance_type
   count           = var.node_count
   ami             = lookup(var.aws_amis, var.aws_region)
@@ -112,7 +102,6 @@ resource "aws_instance" "ci-sockshop-k8s-node" {
     private_key = file(var.private_key_path)
     type        = "ssh"
     host        = self.public_ip
-    #private_key = "${file("${var.private_key_path}")}"
   }
 
   provisioner "remote-exec" {
@@ -129,11 +118,7 @@ resource "aws_instance" "ci-sockshop-k8s-node" {
 
 resource "aws_elb" "ci-sockshop-k8s-elb" {
   depends_on = [aws_instance.ci-sockshop-k8s-node]
-  #depends_on = [ "aws_instance.ci-sockshop-k8s-node" ]
-  name = "ci-sockshop-k8s-elb"
-  # instances = ["${aws_instance.ci-sockshop-k8s-node.*.id}"]
-  # availability_zones = ["${data.aws_availability_zones.available.names}"]
-  # security_groups = ["${aws_security_group.k8s-security-group.id}"] 
+  name = "ci-sockshop-k8s-elb" 
   instances          = aws_instance.ci-sockshop-k8s-node.*.id
   availability_zones = data.aws_availability_zones.available.names
   security_groups    = [aws_security_group.k8s-security-group.id]
@@ -150,6 +135,5 @@ resource "aws_elb" "ci-sockshop-k8s-elb" {
     lb_protocol       = "http"
     instance_protocol = "http"
   }
-
 }
 
